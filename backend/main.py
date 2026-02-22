@@ -5,6 +5,8 @@ import tempfile
 import asyncio
 from pathlib import Path
 
+from typing import Optional
+
 import jwt
 import httpx
 from fastapi import FastAPI, Request, UploadFile, File, Form
@@ -30,7 +32,7 @@ app.add_middleware(
 
 # --- Kling JWT ---
 
-def generate_kling_jwt() -> str | None:
+def generate_kling_jwt() -> Optional[str]:
     access_key = os.getenv("KLING_ACCESS_KEY")
     secret_key = os.getenv("KLING_SECRET_KEY")
     if not access_key or not secret_key:
