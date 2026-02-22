@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const os = require('os');
+const { formidable } = require('formidable');
+const FormData = require('form-data');
 
 // .env 파일 로드
 function loadEnv() {
@@ -96,6 +98,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // IVC 목소리 생성 API
+    if (req.url === '/api/create-voice' && req.method === 'POST') {
+        return createVoiceClone(req, res);
+    }
+
     // 비디오에서 오디오 추출 API
     if (req.url === '/api/extract-audio' && req.method === 'POST') {
         return extractAudioFromVideo(req, res);
@@ -180,11 +187,23 @@ function proxyRequest(req, res, targetUrl, extraHeaders = {}) {
         };
 
         console.log(`[Proxy] ${req.method} ${targetUrl}`);
-        console.log(`[Proxy] Authorization: ${headers['authorization'] ? 'present' : 'missing'}`);
+        console.log(`[Proxy] Authorization: ${headers['Authorization'] || headers['authorization'] ? 'present' : 'missing'}`);
 
         const proxyReq = https.request(options, proxyRes => {
+            // 응답 로그 추가
+            let responseBody = [];
+            proxyRes.on('data', chunk => {
+                responseBody.push(chunk);
+                res.write(chunk);
+            });
+            proxyRes.on('end', () => {
+                const body = Buffer.concat(responseBody).toString();
+                if (proxyRes.statusCode !== 200) {
+                    console.log(`[Proxy] Response ${proxyRes.statusCode}:`, body.substring(0, 200));
+                }
+                res.end();
+            });
             res.writeHead(proxyRes.statusCode, proxyRes.headers);
-            proxyRes.pipe(res);
         });
 
         proxyReq.on('error', err => {
@@ -258,6 +277,85 @@ function extractAudioFromVideo(req, res) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Invalid JSON' }));
         }
+    });
+}
+
+// IVC 목소리 클론 생성
+function createVoiceClone(req, res) {
+    const form = formidable({ multiples: true });
+
+    form.parse(req, (err, fields, files) => {
+        if (err) {
+            console.error('[IVC] Form parse error:', err);
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to parse form' }));
+            return;
+        }
+
+        const apiKey = process.env.ELEVENLABS_API_KEY;
+        const name = Array.isArray(fields.name) ? fields.name[0] : fields.name;
+        const removeNoise = Array.isArray(fields.remove_background_noise)
+            ? fields.remove_background_noise[0]
+            : fields.remove_background_noise;
+
+        // 업로드된 파일 처리
+        const uploadedFile = Array.isArray(files.files) ? files.files[0] : files.files;
+
+        if (!uploadedFile) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No audio file provided' }));
+            return;
+        }
+
+        console.log('[IVC] Creating voice clone:', name);
+        console.log('[IVC] File:', uploadedFile.originalFilename, uploadedFile.size, 'bytes');
+
+        // FormData 구성
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('files', fs.createReadStream(uploadedFile.filepath), {
+            filename: uploadedFile.originalFilename || 'voice_sample.wav',
+            contentType: uploadedFile.mimetype || 'audio/wav'
+        });
+        if (removeNoise === 'true') {
+            formData.append('remove_background_noise', 'true');
+        }
+
+        // ElevenLabs API 요청
+        const options = {
+            hostname: 'api.elevenlabs.io',
+            port: 443,
+            path: '/v1/voices/add',
+            method: 'POST',
+            headers: {
+                ...formData.getHeaders(),
+                'xi-api-key': apiKey
+            }
+        };
+
+        const proxyReq = https.request(options, proxyRes => {
+            let responseData = [];
+            proxyRes.on('data', chunk => responseData.push(chunk));
+            proxyRes.on('end', () => {
+                const responseBody = Buffer.concat(responseData).toString();
+                console.log('[IVC] Response:', responseBody);
+
+                // 임시 파일 삭제
+                fs.unlink(uploadedFile.filepath, () => {});
+
+                res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+                res.end(responseBody);
+            });
+        });
+
+        proxyReq.on('error', err => {
+            console.error('[IVC] Error:', err);
+            fs.unlink(uploadedFile.filepath, () => {});
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to create voice' }));
+        });
+
+        formData.pipe(proxyReq);
     });
 }
 

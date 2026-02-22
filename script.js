@@ -76,8 +76,21 @@ function initEventListeners() {
         });
     });
 
+    // 목소리 클론 입력 방식 전환
+    document.querySelectorAll('input[name="cloneInputMethod"]').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const method = e.target.value;
+            document.getElementById('clone-method-upload').classList.toggle('active', method === 'upload');
+            document.getElementById('clone-method-record').classList.toggle('active', method === 'record');
+        });
+    });
+
+    // 목소리 클론 생성 버튼
+    document.getElementById('createVoiceBtn').addEventListener('click', handleCreateVoice);
+
     // 녹음 관련 초기화
     initRecording();
+    initCloneRecording();
 
     // 녹음 파일 다운로드 버튼
     document.getElementById('downloadVoiceBtn').addEventListener('click', () => {
@@ -102,8 +115,6 @@ async function handleGenerateVideo() {
     const btn = document.getElementById('generateBtn');
     const { accessKey, secretKey } = getKlingKeys();
 
-    if (!accessKey || !secretKey) return alert('Kling API 키를 입력해주세요.');
-
     btn.disabled = true;
     btn.innerHTML = '<span class="loading"></span>처리 중...';
 
@@ -127,8 +138,8 @@ async function handleGenerateVideo() {
         const result = await KlingAPI.createMotionControlVideo(
             accessKey, secretKey, imageData, videoUrl,
             document.getElementById('orientation').value,
-            document.getElementById('mode').value,
-            document.getElementById('prompt').value
+            'std',
+            ''
         );
 
         showResult(result);
@@ -144,7 +155,6 @@ async function handleGenerateVideo() {
 // 목소리 목록 로드 핸들러
 async function handleLoadVoices() {
     const apiKey = getElevenKey();
-    if (!apiKey) return alert('ElevenLabs API 키를 입력해주세요.');
 
     const btn = document.getElementById('loadVoicesBtn');
     btn.disabled = true;
@@ -165,7 +175,7 @@ async function handleGenerateVoice() {
     const text = document.getElementById('voiceText').value.trim();
     const voiceId = document.getElementById('elevenVoiceSelect').value;
 
-    if (!apiKey || !text) return alert('API 키와 텍스트를 입력해주세요.');
+    if (!text) return alert('텍스트를 입력해주세요.');
 
     const btn = document.getElementById('generateVoiceBtn');
     btn.disabled = true;
@@ -286,13 +296,10 @@ async function handleConvertSpeech() {
 }
 
 async function loadTaskList() {
-    const { accessKey, secretKey } = getKlingKeys();
-    if (!accessKey || !secretKey) return;
-
     try {
         const [motionResult, lipSyncResult] = await Promise.allSettled([
-            KlingAPI.getTaskList(accessKey, secretKey),
-            KlingAPI.getLipSyncTaskList(accessKey, secretKey)
+            KlingAPI.getTaskList(),
+            KlingAPI.getLipSyncTaskList()
         ]);
 
         let allTasks = [];
@@ -400,9 +407,10 @@ window.startLipSync = async (taskId, videoUrl) => {
             const audioBytes = Uint8Array.from(atob(extractData.audio_base64), c => c.charCodeAt(0));
             const extractedBlob = new Blob([audioBytes], { type: 'audio/mpeg' });
 
-            status.innerText = '내 목소리로 변환 중...';
+            status.innerText = '선택한 목소리로 변환 중...';
             const apiKey = getElevenKey();
-            audioBlob = await ElevenLabsAPI.convertSpeech(apiKey, myVoiceId, extractedBlob);
+            const selectedVoiceId = document.getElementById('elevenVoiceSelect').value;
+            audioBlob = await ElevenLabsAPI.convertSpeech(apiKey, selectedVoiceId, extractedBlob);
             audioData = await FileHelpers.fileToBase64(audioBlob);
             duration = await FileHelpers.getAudioDuration(audioBlob);
         } else {
@@ -437,4 +445,129 @@ function showResult(data, isError = false) {
     const content = document.getElementById('resultContent');
     section.style.display = 'block';
     content.innerText = isError ? '오류: ' + data : '성공: ' + (data.message || '작업이 생성되었습니다.');
+}
+
+// 목소리 클론 녹음 관련
+let cloneMediaRecorder = null;
+let cloneAudioChunks = [];
+let cloneRecordedBlob = null;
+let cloneRecordingStartTime = null;
+let cloneTimerInterval = null;
+
+function initCloneRecording() {
+    const startBtn = document.getElementById('cloneStartRecordBtn');
+    const stopBtn = document.getElementById('cloneStopRecordBtn');
+
+    startBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            cloneMediaRecorder = new MediaRecorder(stream);
+            cloneAudioChunks = [];
+
+            cloneMediaRecorder.ondataavailable = (event) => {
+                cloneAudioChunks.push(event.data);
+            };
+
+            cloneMediaRecorder.onstop = () => {
+                cloneRecordedBlob = new Blob(cloneAudioChunks, { type: 'audio/wav' });
+                const url = URL.createObjectURL(cloneRecordedBlob);
+                const preview = document.getElementById('clonePreview');
+                preview.src = url;
+                preview.style.display = 'block';
+            };
+
+            cloneMediaRecorder.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            document.getElementById('cloneRecordingPulse').style.display = 'inline-block';
+
+            cloneRecordingStartTime = Date.now();
+            cloneTimerInterval = setInterval(updateCloneTimer, 1000);
+        } catch (err) {
+            alert('마이크 접근 권한이 필요합니다.');
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        cloneMediaRecorder.stop();
+        cloneMediaRecorder.stream.getTracks().forEach(track => track.stop());
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        document.getElementById('cloneRecordingPulse').style.display = 'none';
+        clearInterval(cloneTimerInterval);
+    });
+}
+
+function updateCloneTimer() {
+    const now = Date.now();
+    const diff = Math.floor((now - cloneRecordingStartTime) / 1000);
+    const mins = Math.floor(diff / 60).toString().padStart(2, '0');
+    const secs = (diff % 60).toString().padStart(2, '0');
+    document.getElementById('cloneRecordTimer').innerText = `${mins}:${secs}`;
+}
+
+// 목소리 클론 생성 핸들러
+async function handleCreateVoice() {
+    const name = document.getElementById('voiceCloneName').value.trim();
+    if (!name) {
+        alert('목소리 이름을 입력해주세요.');
+        return;
+    }
+
+    const method = document.querySelector('input[name="cloneInputMethod"]:checked').value;
+    let audioBlob;
+
+    if (method === 'record') {
+        if (!cloneRecordedBlob) {
+            alert('먼저 녹음을 해주세요.');
+            return;
+        }
+        audioBlob = cloneRecordedBlob;
+    } else {
+        const fileInput = document.getElementById('voiceCloneFile');
+        if (!fileInput.files[0]) {
+            alert('오디오 파일을 선택해주세요.');
+            return;
+        }
+        audioBlob = fileInput.files[0];
+    }
+
+    const removeNoise = document.getElementById('removeNoiseCheckbox').checked;
+    const status = document.getElementById('voiceCloneStatus');
+    const btn = document.getElementById('createVoiceBtn');
+
+    btn.disabled = true;
+    status.innerText = '목소리 등록 중...';
+
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('files', audioBlob, 'voice_sample.wav');
+        formData.append('remove_background_noise', removeNoise.toString());
+
+        const response = await fetch('/api/create-voice', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.detail?.message || result.error || '목소리 등록 실패');
+        }
+
+        status.innerHTML = `✅ 등록 완료! Voice ID: <code>${result.voice_id}</code>`;
+
+        // 목소리 목록 새로고침
+        await handleLoadVoices();
+
+        // 새로 생성된 목소리 선택
+        const select = document.getElementById('elevenVoiceSelect');
+        select.value = result.voice_id;
+
+    } catch (error) {
+        status.innerText = '❌ 오류: ' + error.message;
+    } finally {
+        btn.disabled = false;
+    }
 }

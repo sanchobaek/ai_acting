@@ -1,0 +1,25 @@
+{
+  "name": "ai_acting",
+  "version": "1.0.0",
+  "description": "이미지와 영상을 조합하여 새로운 영상을 만들고, AI 목소리를 입혀주는 웹 애플리케이션입니다.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanchobaek/ai_acting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sanchobaek/ai_acting/issues"
+  },
+  "homepage": "https://github.com/sanchobaek/ai_acting#readme",
+  "dependencies": {
+    "form-data": "^4.0.5",
+    "formidable": "^3.5.4"
+  }
+}

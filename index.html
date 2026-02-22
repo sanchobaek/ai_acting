@@ -75,19 +75,6 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="mode">모드</label>
-                <select id="mode">
-                    <option value="std">Standard</option>
-                    <option value="pro">Professional</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="prompt">프롬프트 (선택사항)</label>
-                <textarea id="prompt" rows="3" placeholder="비디오 설명을 입력하세요 (최대 2500자)"></textarea>
-            </div>
-
             <button id="generateBtn" class="btn-primary">비디오 생성하기</button>
         </div>
 
@@ -96,6 +83,7 @@
             <div class="tabs">
                 <button class="tab-btn active" data-tab="voiceGen">텍스트 → 음성 (TTS)</button>
                 <button class="tab-btn" data-tab="voiceChange">음성 → 음성 (STS)</button>
+                <button class="tab-btn" data-tab="voiceClone">내 목소리 등록</button>
             </div>
 
             <div id="voiceGen-content" class="tab-content active">
@@ -136,6 +124,37 @@
                 </div>
 
                 <button id="convertVoiceBtn" class="btn-primary">목소리 변형하기</button>
+            </div>
+
+            <div id="voiceClone-content" class="tab-content">
+                <div class="form-group">
+                    <label>목소리 이름</label>
+                    <input type="text" id="voiceCloneName" placeholder="예: 내 목소리">
+                </div>
+                <div class="form-group">
+                    <label>목소리 샘플 (1-5분 권장)</label>
+                    <div class="input-methods">
+                        <label><input type="radio" name="cloneInputMethod" value="upload" checked> 파일 업로드</label>
+                        <label><input type="radio" name="cloneInputMethod" value="record"> 직접 녹음</label>
+                    </div>
+                </div>
+                <div id="clone-method-upload" class="method-content active">
+                    <input type="file" id="voiceCloneFile" accept="audio/*">
+                </div>
+                <div id="clone-method-record" class="method-content">
+                    <div class="record-controls">
+                        <button id="cloneStartRecordBtn" class="btn-record">⏺️ 녹음 시작</button>
+                        <button id="cloneStopRecordBtn" class="btn-stop" disabled>⏹️ 녹음 중지</button>
+                        <span id="cloneRecordTimer" class="timer">00:00</span>
+                    </div>
+                    <div id="cloneRecordingPulse" class="pulse" style="display: none;"></div>
+                    <audio id="clonePreview" controls style="width: 100%; margin-top: 10px; display: none;"></audio>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label><input type="checkbox" id="removeNoiseCheckbox" checked> 배경 소음 제거</label>
+                </div>
+                <button id="createVoiceBtn" class="btn-primary">내 목소리 등록하기</button>
+                <div id="voiceCloneStatus" style="margin-top: 10px;"></div>
             </div>
 
             <div class="form-group" style="margin-top: 15px;">
