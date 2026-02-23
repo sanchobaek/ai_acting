@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import * as KlingAPI from '../api/kling.js'
 import * as FileHelpers from '../utils/fileHelpers.js'
 
-const SAMPLE_TASK_IDS = ['854170818786492422', '854155309119176798']
-
 function VideoGenerator({ onResult, onTaskCreated }) {
   const [imageTab, setImageTab] = useState('imageFile')
   const [imageUrl, setImageUrl] = useState('')
@@ -12,7 +10,6 @@ function VideoGenerator({ onResult, onTaskCreated }) {
   const [videoSources, setVideoSources] = useState([])
   const [selectedVideo, setSelectedVideo] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sampleVideos, setSampleVideos] = useState([])
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -26,21 +23,6 @@ function VideoGenerator({ onResult, onTaskCreated }) {
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    Promise.allSettled(SAMPLE_TASK_IDS.map(id => KlingAPI.getTaskById(id)))
-      .then(results => {
-        const videos = results
-          .filter(r => r.status === 'fulfilled')
-          .map(r => {
-            const task = r.value?.data
-            if (!task) return null
-            const url = task.task_result?.video_url || task.task_result?.videos?.[0]?.url || ''
-            return url ? { taskId: task.task_id, url } : null
-          })
-          .filter(Boolean)
-        setSampleVideos(videos)
-      })
-  }, [])
 
   const handleImageFileChange = (e) => {
     const file = e.target.files[0]
@@ -164,6 +146,7 @@ function VideoGenerator({ onResult, onTaskCreated }) {
                 <div className="video-radio-content">
                   <video
                     src={src.url}
+                    poster={src.thumbnail || undefined}
                     muted
                     preload="metadata"
                     style={{ width: '100%', borderRadius: '6px', display: 'block' }}
@@ -191,13 +174,14 @@ function VideoGenerator({ onResult, onTaskCreated }) {
         </div>
         <div className="sample-videos-grid">
           <div className="sample-video-item">
-            <video src="/sample-video.mp4" controls muted style={{ width: '100%', borderRadius: '10px' }} />
+            <video src="https://sancho-ai-acting-s3.s3.ap-northeast-2.amazonaws.com/%E1%84%87%E1%85%A7%E1%86%AB%E1%84%80%E1%85%A7%E1%86%BC_%E1%84%8C%E1%85%A5%E1%86%BC%E1%84%8B%E1%85%AE%E1%84%89%E1%85%A5%E1%86%BC.mp4" controls muted style={{ width: '100%', borderRadius: '10px' }} />
           </div>
-          {sampleVideos.map((v) => (
-            <div key={v.taskId} className="sample-video-item">
-              <video src={v.url} controls muted style={{ width: '100%', borderRadius: '10px' }} />
-            </div>
-          ))}
+          <div className="sample-video-item">
+            <video src="https://sancho-ai-acting-s3.s3.ap-northeast-2.amazonaws.com/%E1%84%87%E1%85%A7%E1%86%AB%E1%84%80%E1%85%A7%E1%86%BC_%E1%84%8E%E1%85%A1%E1%84%89%E1%85%B3%E1%86%BC%E1%84%8B%E1%85%AF%E1%86%AB.mp4" controls muted style={{ width: '100%', borderRadius: '10px' }} />
+          </div>
+          <div className="sample-video-item">
+            <video src="https://sancho-ai-acting-s3.s3.ap-northeast-2.amazonaws.com/%E1%84%87%E1%85%A7%E1%86%AB%E1%84%80%E1%85%A7%E1%86%BC_%E1%84%8E%E1%85%AC%E1%84%86%E1%85%B5%E1%86%AB%E1%84%89%E1%85%B5%E1%86%A8.mp4" controls muted style={{ width: '100%', borderRadius: '10px' }} />
+          </div>
         </div>
       </div>
     </div>

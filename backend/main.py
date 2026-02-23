@@ -52,8 +52,11 @@ async def get_config():
     for entry in raw.split(","):
         entry = entry.strip()
         if "::" in entry:
-            label, url = entry.split("::", 1)
-            video_sources.append({"label": label.strip(), "url": url.strip()})
+            parts = entry.split("::")
+            label = parts[0].strip()
+            url = parts[1].strip()
+            thumbnail = parts[2].strip() if len(parts) > 2 else ""
+            video_sources.append({"label": label, "url": url, "thumbnail": thumbnail})
     return {
         "voiceId": os.getenv("ELEVENLABS_VOICE_ID", ""),
         "videoSources": video_sources,
