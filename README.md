@@ -8,106 +8,82 @@
 - **AI 목소리 변환**: 음성을 등록된 AI 목소리로 변환 (ElevenLabs Speech-to-Speech)
 - **립싱크**: 생성된 비디오에 변환된 음성을 동기화
 
-## 설치 방법
+## 🚀 Amazon Linux 2023 배포 가이드 (Backend)
 
-### 1. 저장소 클론
+EC2 인스턴스에 접속한 후 아래 순서대로 진행하세요.
 
+### 1. 필수 패키지 설치 (Git, Python, Pip)
+```bash
+sudo dnf update -y
+sudo dnf install git python3 python3-pip -y
+```
+
+### 2. ffmpeg 설치 (비디오 처리 필수)
+Amazon Linux 2023 기본 레포지토리에는 ffmpeg가 없으므로 정적 바이너리를 설치합니다.
+```bash
+wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+tar xvf ffmpeg-release-amd64-static.tar.xz
+sudo mv ffmpeg-*-static/ffmpeg /usr/local/bin/
+sudo mv ffmpeg-*-static/ffprobe /usr/local/bin/
+# 설치 확인
+ffmpeg -version
+```
+
+### 3. 저장소 클론 및 환경 설정
 ```bash
 git clone https://github.com/YOUR_USERNAME/ai-acting-studio.git
 cd ai-acting-studio
-```
 
-### 2. 환경 변수 설정
-
-`.env.example` 파일을 복사하여 `.env` 파일을 생성하고, API 키를 입력합니다.
-
-```bash
+# .env 파일 생성 및 수정
 cp .env.example .env
+vi .env  # API 키 입력 (KLING, ELEVENLABS 등)
 ```
 
-`.env` 파일 내용:
-
-```
-# Kling AI API
-KLING_ACCESS_KEY=your_kling_access_key_here
-KLING_SECRET_KEY=your_kling_secret_key_here
-
-# ElevenLabs API
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-ELEVENLABS_VOICE_ID=your_voice_id_here
-```
-
-### 3. 서버 실행
-
+### 4. 백엔드 실행 (FastAPI)
 ```bash
-node server.js
+cd backend
+pip install -r requirements.txt
+
+# 백그라운드에서 실행 (3000번 포트)
+nohup uvicorn main:app --host 0.0.0.0 --port 3000 &
+```
+*주의: EC2 보안 그룹에서 3000번 포트를 열어주세요.*
+
+---
+
+## 🌐 프론트엔드 배포 (S3)
+
+프론트엔드는 S3 정적 웹 호스팅을 사용하며, 빌드 시 EC2 백엔드 주소를 주입해야 합니다.
+
+### 1. 환경 변수 설정 (로컬 PC에서 작업)
+`frontend/.env` 파일을 생성하고 EC2의 퍼블릭 IP를 입력합니다.
+```
+VITE_API_URL=http://[EC2-퍼블릭-IP]:3000
 ```
 
-### 4. 브라우저에서 접속
+### 2. 빌드 및 S3 업로드
+```bash
+cd frontend
+npm install
+npm run build
+# 생성된 dist 폴더의 모든 파일을 S3 버킷에 업로드
+```
 
-```
-http://localhost:3000
-```
+---
 
 ## 필수 요구 사항
-
-- **Node.js** v18 이상
-- **ffmpeg** (비디오에서 오디오 추출에 필요)
-  ```bash
-  # macOS
-  brew install ffmpeg
-
-  # Ubuntu
-  sudo apt install ffmpeg
-  ```
-
-## API 키 발급
-
-### Kling AI
-1. [Kling AI Platform](https://klingai.com) 접속
-2. 계정 생성 후 API 키 발급
-
-### ElevenLabs
-1. [ElevenLabs](https://elevenlabs.io) 접속
-2. 계정 생성 후 API 키 발급
-3. Voice Lab에서 목소리 클론 후 Voice ID 복사
-
-## 사용 방법
-
-### 비디오 생성
-
-1. 이미지 업로드 또는 URL 입력
-2. 참조 비디오 URL 입력 (직접 다운로드 가능한 .mp4/.mov URL)
-3. 캐릭터 방향 선택
-   - 이미지 방향: 최대 10초
-   - 비디오 방향: 최대 30초
-4. "비디오 생성하기" 클릭
-
-### 목소리 변환 및 립싱크
-
-1. 작업 목록에서 생성된 비디오의 "목소리 입히기" 클릭
-2. "동영상 음성 → 내 목소리로 변환" 선택
-3. "립싱크 시작" 클릭
+- **Python** 3.9 이상
+- **ffmpeg** (필수)
+- **API Keys**: Kling AI, ElevenLabs
 
 ## 프로젝트 구조
-
 ```
 ai-acting-studio/
-├── index.html          # 메인 HTML
-├── script.js           # 클라이언트 메인 스크립트
-├── style.css           # 스타일시트
-├── server.js           # Node.js 프록시 서버
-├── .env                # 환경 변수 (Git 제외)
-├── .env.example        # 환경 변수 예시
-├── video_gen/
-│   └── kling_api.js    # Kling AI API 모듈
-├── voice_change/
-│   └── elevenlabs_api.js # ElevenLabs API 모듈
-└── utils/
-    ├── auth.js         # JWT 인증 유틸리티
-    └── file_helpers.js # 파일 처리 유틸리티
+├── backend/            # Python FastAPI 서버
+├── frontend/           # React (Vite) 프론트엔드
+├── server.js           # Node.js 통합 서버 (선택 사항)
+└── .env                # API 키 및 설정
 ```
 
 ## 라이선스
-
 MIT License

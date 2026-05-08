@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { getApiUrl } from '../api/config'
 import * as KlingAPI from '../api/kling.js'
 import * as ElevenLabsAPI from '../api/elevenlabs.js'
 import * as FileHelpers from '../utils/fileHelpers.js'
@@ -66,7 +67,7 @@ const TaskList = forwardRef(function TaskList(props, ref) {
     try {
       setLipSyncStatus(taskId, '동영상에서 음성 추출 중...')
 
-      const extractRes = await fetch('/api/extract-audio', {
+      const extractRes = await fetch(getApiUrl('/api/extract-audio'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ video_url: videoUrl })

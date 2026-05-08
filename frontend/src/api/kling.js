@@ -1,10 +1,9 @@
-// Kling AI API 모듈
-// API 키와 인증은 서버에서 처리됨
+import { getApiUrl } from './config';
 
 const KLING_CONFIG = {
-    baseUrl: '/api/kling/v1/videos/motion-control',
-    lipSyncUrl: '/api/kling/v1/videos/advanced-lip-sync',
-    identifyFaceUrl: '/api/kling/v1/videos/identify-face'
+    baseUrl: getApiUrl('/api/kling/v1/videos/motion-control'),
+    lipSyncUrl: getApiUrl('/api/kling/v1/videos/advanced-lip-sync'),
+    identifyFaceUrl: getApiUrl('/api/kling/v1/videos/identify-face')
 };
 
 export async function createMotionControlVideo(accessKey, secretKey, imageUrl, videoUrl, orientation, mode, prompt) {

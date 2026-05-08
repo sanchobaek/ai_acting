@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { getApiUrl } from '../api/config'
 
 function VoiceService() {
   const [cloneName, setCloneName] = useState('')
@@ -91,7 +92,7 @@ function VoiceService() {
       formData.append('files', audioBlob, 'voice_sample.wav')
       formData.append('remove_background_noise', removeNoise.toString())
 
-      const response = await fetch('/api/create-voice', { method: 'POST', body: formData })
+      const response = await fetch(getApiUrl('/api/create-voice'), { method: 'POST', body: formData })
       const result = await response.json()
 
       if (!response.ok) throw new Error(result.detail?.message || result.error || '목소리 등록 실패')

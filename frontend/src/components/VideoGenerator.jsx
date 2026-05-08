@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getApiUrl } from '../api/config'
 import * as KlingAPI from '../api/kling.js'
 import * as FileHelpers from '../utils/fileHelpers.js'
 
@@ -13,7 +14,7 @@ function VideoGenerator({ onResult, onTaskCreated }) {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    fetch('/api/config')
+    fetch(getApiUrl('/api/config'))
       .then(r => r.json())
       .then(config => {
         const sources = config.videoSources || []

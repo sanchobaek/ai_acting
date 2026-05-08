@@ -1,8 +1,7 @@
-// ElevenLabs API 모듈
-// API 키는 서버에서 처리됨
+import { getApiUrl } from './config';
 
 export async function generateSpeech(apiKey, text, voiceId = 'c2OowINIfBKhOHxTDBdh') {
-    const URL = `/api/eleven/v1/text-to-speech/${voiceId}`;
+    const URL = getApiUrl(`/api/eleven/v1/text-to-speech/${voiceId}`);
 
     const response = await fetch(URL, {
         method: 'POST',
@@ -27,7 +26,7 @@ export async function generateSpeech(apiKey, text, voiceId = 'c2OowINIfBKhOHxTDB
 }
 
 export async function getVoices() {
-    const URL = '/api/eleven/v1/voices';
+    const URL = getApiUrl('/api/eleven/v1/voices');
 
     const response = await fetch(URL, { method: 'GET' });
 
@@ -40,7 +39,7 @@ export async function getVoices() {
 }
 
 export async function convertSpeech(apiKey, voiceId, audioBlob) {
-    const URL = `/api/eleven/v1/speech-to-speech/${voiceId}`;
+    const URL = getApiUrl(`/api/eleven/v1/speech-to-speech/${voiceId}`);
 
     const formData = new FormData();
     formData.append('audio', audioBlob);
